@@ -1,0 +1,192 @@
+rbac:
+  create: true
+  pspEnabled: true
+  pspUseAppArmor: true
+  namespaced: false
+serviceAccount:
+  create: true
+  name:
+  nameTest:
+
+replicas: 2
+
+deploymentStrategy:
+  type: RollingUpdate
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 60
+  timeoutSeconds: 30
+  failureThreshold: 10
+
+image:
+  repository: grafana/grafana
+  tag: 6.3.4
+  pullPolicy: IfNotPresent
+
+
+testFramework:
+  image: "dduportal/bats"
+  tag: "0.4.0"
+  securityContext: {}
+
+securityContext:
+  runAsUser: 472
+  fsGroup: 472
+extraConfigmapMounts: []
+extraEmptyDirMounts: []
+downloadDashboardsImage:
+  repository: appropriate/curl
+  tag: latest
+  pullPolicy: IfNotPresent
+
+downloadDashboards:
+  env: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+  annotations: {}
+  labels: {}
+
+ingress:
+  enabled: true
+  annotations: {
+    kubernetes.io/ingress.class: nginx,
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  }
+  labels: {}
+  path: /
+  hosts:
+  - grafana.domain.com
+  tls:
+  - hosts:
+    - grafana.domain.com
+    secretName: cert
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+extraInitContainers: []
+
+extraContainers: |
+
+persistence:
+  enabled: true
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  finalizers:
+    - kubernetes.io/pvc-protection
+
+initChownData:
+  enabled: true
+
+  image:
+    repository: busybox
+    tag: "1.30"
+    pullPolicy: IfNotPresent
+
+  resources: {}
+
+adminUser: admin
+adminPassword: admin
+
+admin:
+  existingSecret: ""
+  userKey: admin-user
+  passwordKey: admin-password
+
+env: {}
+
+envFromSecret: ""
+
+extraSecretMounts: []
+
+extraVolumeMounts: []
+
+plugins: []
+
+datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server.monitoring.svc.cluster.local
+        access: direct
+        isDefault: true
+
+notifiers: {}
+
+dashboardProviders: {}
+
+dashboards: {}
+
+dashboardsConfigMaps: {}
+
+grafana.ini:
+  paths:
+    data: /var/lib/grafana/data
+    logs: /var/log/grafana
+    plugins: /var/lib/grafana/plugins
+    provisioning: /etc/grafana/provisioning
+  analytics:
+    check_for_updates: true
+  log:
+    mode: console
+  grafana_net:
+    url: https://grafana.net
+  server:
+    root_url: https://grafana.domain.com
+  auth.generic_oauth:
+    enabled: true
+    client_id: <<CLIENTID>>
+    client_secret: <<CLIENTSECRET>>
+    scopes: openid profile email
+    auth_url: <<AUTHORIZEURL>>
+    token_url: <<TOKENURL>>
+    api_url: <<APIURL>>
+
+ldap:
+  existingSecret: ""
+  config: ""
+
+smtp:
+  existingSecret: ""
+  userKey: "user"
+  passwordKey: "password"
+
+sidecar:
+  image: kiwigrid/k8s-sidecar:0.1.20
+  imagePullPolicy: IfNotPresent
+  resources: {}
+  dashboards:
+    enabled: false
+    label: grafana_dashboard
+    folder: /tmp/dashboards
+    defaultFolderName: null
+    searchNamespace: null
+    provider:
+      name: sidecarProvider
+      orgid: 1
+      folder: ''
+      type: file
+      disableDelete: false
+  datasources:
+    enabled: false
+    label: grafana_datasource
+    searchNamespace: null
